@@ -1,4 +1,4 @@
-const STORE_KEY = "tap_dash_arena_v2";
+const STORE_KEY = "tap_dash_arena_v3";
 const state = load();
 
 const SKINS = [
@@ -10,8 +10,8 @@ const SKINS = [
 
 const MISSIONS = [
   { id: "play3", label: "Play 3 runs", goal: 3, reward: 80 },
-  { id: "score120", label: "Reach score 120 in one run", goal: 1, reward: 120 },
-  { id: "combo8", label: "Reach combo x8", goal: 1, reward: 100 },
+  { id: "score150", label: "Reach score 150 in one run", goal: 1, reward: 140 },
+  { id: "combo10", label: "Reach combo x10", goal: 1, reward: 120 },
 ];
 
 const el = {
@@ -48,13 +48,11 @@ function bind() {
     renderTop();
   };
 
-  el.premiumBtn.onclick = async () => {
-    // TODO: 결제 연동 훅 (Stripe Checkout)
-    // const url = await createCheckoutSession(); location.href = url;
-    state.premium = true; // demo unlock
+  el.premiumBtn.onclick = () => {
+    state.premium = true; // TODO: Stripe checkout 연동
     save();
     renderTop();
-    alert("Premium unlocked (demo)");
+    toast("Premium unlocked (demo)");
   };
 
   el.startBtn.onclick = startRun;
@@ -82,49 +80,60 @@ function startRun() {
   let score = 0;
   let combo = 1;
   let miss = 0;
-  let targetSize = 58;
+  let targetSize = 56;
   let activeTarget = null;
 
   el.arena.innerHTML = "";
   syncHud();
-
   spawnTarget();
+
   const timer = setInterval(() => {
-    time--;
-    if (time % 8 === 0 && targetSize > 34) targetSize -= 4;
+    time -= 1;
+    if (time % 7 === 0 && targetSize > 34) targetSize -= 3;
     syncHud();
+
     if (time <= 0 || miss >= 5) {
       clearInterval(timer);
       if (activeTarget) activeTarget.remove();
-      finishRun(score, combo);
+      finishRun(score);
     }
   }, 1000);
 
   function spawnTarget() {
     if (activeTarget) activeTarget.remove();
+
+    const bonus = Math.random() < 0.16;
     const t = document.createElement("button");
-    t.className = "target";
+    t.className = `target ${bonus ? "bonus" : ""}`;
     t.style.width = `${targetSize}px`;
     t.style.height = `${targetSize}px`;
 
     const maxX = Math.max(1, el.arena.clientWidth - targetSize);
     const maxY = Math.max(1, el.arena.clientHeight - targetSize);
-    t.style.left = `${Math.random() * maxX}px`;
-    t.style.top = `${Math.random() * maxY}px`;
+    const x = Math.random() * maxX;
+    const y = Math.random() * maxY;
+    t.style.left = `${x}px`;
+    t.style.top = `${y}px`;
 
     let clicked = false;
-    const vanishMs = Math.max(420, 1100 - combo * 40);
+    const vanishMs = Math.max(390, 1050 - combo * 35);
+
     t.onclick = () => {
       clicked = true;
+      const gain = bonus ? Math.floor(8 * combo) : Math.floor(4 * combo);
+      score += gain;
       combo += 1;
-      score += Math.floor(4 * combo);
-      if (combo >= 8) progressMission("combo8", 1);
+
+      if (combo >= 10) progressMission("combo10", 1);
+      popScore(x + targetSize / 2, y + 8, `+${gain}`);
+      burst(x + targetSize / 2, y + targetSize / 2, bonus ? 10 : 7);
+
       syncHud();
       spawnTarget();
     };
 
-    activeTarget = t;
     el.arena.appendChild(t);
+    activeTarget = t;
 
     setTimeout(() => {
       if (clicked || time <= 0) return;
@@ -144,19 +153,45 @@ function startRun() {
 }
 
 function finishRun(score) {
-  const coinReward = Math.floor(score / 8) + 10;
+  const coinReward = Math.floor(score / 7) + 12;
   state.coins += coinReward;
   state.bestScore = Math.max(state.bestScore, score);
   state.runs += 1;
+
   progressMission("play3", 1);
-  if (score >= 120) progressMission("score120", 1);
+  if (score >= 150) progressMission("score150", 1);
 
   state.ranking.push({ name: state.playerName, score, at: Date.now() });
   state.ranking = state.ranking.sort((a, b) => b.score - a.score).slice(0, 20);
 
   save();
   renderAll();
-  alert(`Run finished! Score ${score} · +${coinReward} coins`);
+  toast(`Run done · Score ${score} · +${coinReward} coins`);
+}
+
+function popScore(x, y, text) {
+  const n = document.createElement("div");
+  n.className = "float-score";
+  n.textContent = text;
+  n.style.left = `${x}px`;
+  n.style.top = `${y}px`;
+  el.arena.appendChild(n);
+  setTimeout(() => n.remove(), 560);
+}
+
+function burst(x, y, count = 8) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement("div");
+    p.className = "particle";
+    p.style.left = `${x}px`;
+    p.style.top = `${y}px`;
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 14 + Math.random() * 34;
+    p.style.setProperty("--dx", `${Math.cos(ang) * dist}px`);
+    p.style.setProperty("--dy", `${Math.sin(ang) * dist}px`);
+    el.arena.appendChild(p);
+    setTimeout(() => p.remove(), 480);
+  }
 }
 
 function renderMissions() {
@@ -167,9 +202,7 @@ function renderMissions() {
     return `<li class="mission-item ${done ? "done" : ""}">
       <div><strong>${m.label}</strong></div>
       <div>${Math.min(p.value, m.goal)}/${m.goal} · reward ${m.reward} coins</div>
-      <button data-claim="${m.id}" ${!done || p.claimed ? "disabled" : ""}>
-        ${p.claimed ? "Claimed" : "Claim"}
-      </button>
+      <button data-claim="${m.id}" ${!done || p.claimed ? "disabled" : ""}>${p.claimed ? "Claimed" : "Claim"}</button>
     </li>`;
   }).join("");
 
@@ -226,7 +259,7 @@ function renderShop() {
       const id = btn.dataset.buy;
       const skin = SKINS.find((s) => s.id === id);
       if (!skin) return;
-      if (state.coins < skin.coin) return alert("Not enough coins");
+      if (state.coins < skin.coin) return toast("Not enough coins");
       state.coins -= skin.coin;
       state.ownedSkins.push(id);
       state.skin = id;
@@ -244,30 +277,26 @@ function renderShop() {
   });
 }
 
-function applySkin() {
-  document.body.dataset.skin = state.skin;
-}
-
 function renderRank() {
   el.rankList.innerHTML = state.ranking.length
-    ? state.ranking
-        .slice(0, 10)
-        .map((r) => `<li>${esc(r.name)} — <b>${r.score}</b></li>`)
-        .join("")
+    ? state.ranking.slice(0, 10).map((r) => `<li>${esc(r.name)} — <b>${r.score}</b></li>`).join("")
     : "<li>No score yet</li>";
 }
+
+function applySkin() { document.body.dataset.skin = state.skin; }
 
 function refreshStreak() {
   const today = dayKey();
   if (state.lastOpenDay === today) return;
-
-  const yesterday = dayKey(Date.now() - 86400000);
-  if (state.lastOpenDay === yesterday) state.streak += 1;
-  else state.streak = 1;
-
+  const y = dayKey(Date.now() - 86400000);
+  state.streak = state.lastOpenDay === y ? state.streak + 1 : 1;
   state.lastOpenDay = today;
   state.coins += 15;
   save();
+}
+
+function toast(msg) {
+  alert(msg);
 }
 
 function load() {
@@ -291,23 +320,9 @@ function load() {
   };
 }
 
-function save() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
-}
-
-function byId(id) {
-  return document.getElementById(id);
-}
-
-function dayKey(ts = Date.now()) {
-  return new Date(ts).toISOString().slice(0, 10);
-}
-
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function byId(id) { return document.getElementById(id); }
+function dayKey(ts = Date.now()) { return new Date(ts).toISOString().slice(0, 10); }
 function esc(v) {
-  return String(v)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  return String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
