@@ -11,28 +11,22 @@
       <header class="top card">
         <div>
           <h1>⚡ Tap Dash Arena</h1>
-          <p class="muted">Arcade mobile-first · premium cosmetic economy</p>
+          <p class="muted">Free core · $0.99 premium cosmetics</p>
         </div>
-        <button id="premiumBtn" class="cta">Unlock Premium ($0.99)</button>
+        <button id="premiumBtn" class="cta small">Unlock Premium</button>
       </header>
 
-      <section class="card stats">
+      <section class="card stats" id="statsBar">
         <div><span class="label">Player</span><strong id="playerLabel">Guest</strong></div>
         <div><span class="label">Coins</span><strong id="coinLabel">0</strong></div>
         <div><span class="label">Best</span><strong id="bestLabel">0</strong></div>
         <div><span class="label">Streak</span><strong id="streakLabel">0🔥</strong></div>
       </section>
 
-      <section class="card identity">
-        <input id="playerInput" maxlength="20" placeholder="Your name" />
-        <button id="savePlayerBtn">Save</button>
-        <button id="muteBtn">🔊</button>
-      </section>
-
       <section class="card game">
         <div class="game-head">
           <h2>45s Survival</h2>
-          <button id="startBtn">Start Run</button>
+          <button id="startBtn" class="cta">Start Run</button>
         </div>
         <div class="hud">
           <span>Time <b id="timeLabel">45</b></span>
@@ -44,25 +38,41 @@
         <div id="arena" class="arena"></div>
       </section>
 
-      <section class="card missions">
+      <section id="panel-play" class="panel card active">
+        <h3>Profile & Sound</h3>
+        <div class="row">
+          <input id="playerInput" maxlength="20" placeholder="Your name" />
+          <button id="savePlayerBtn">Save</button>
+          <button id="muteBtn">🔊</button>
+        </div>
+      </section>
+
+      <section id="panel-missions" class="panel card">
         <h3>Daily Missions</h3>
         <ul id="missionList"></ul>
       </section>
 
-      <section class="card shop">
+      <section id="panel-shop" class="panel card">
         <h3>Skin Shop</h3>
         <div id="skinList" class="skin-list"></div>
       </section>
 
-      <section class="card leaderboard">
+      <section id="panel-rank" class="panel card">
         <h3>Top Local Ranking</h3>
         <ol id="rankList"></ol>
       </section>
+
+      <nav class="bottom-nav card">
+        <button class="tab active" data-panel="play">🎮 Play</button>
+        <button class="tab" data-panel="missions">🎯 Missions</button>
+        <button class="tab" data-panel="shop">🛍️ Shop</button>
+        <button class="tab" data-panel="rank">🏆 Rank</button>
+      </nav>
     </div>
 
     <div id="resultModal" class="modal hidden">
       <div class="modal-card">
-        <h2 id="gradeText">A</h2>
+        <h2 id="gradeText">A Rank</h2>
         <p id="resultScore">Score 0</p>
         <p id="resultCoins">+0 coins</p>
         <button id="retryBtn" class="cta">Play Again</button>
