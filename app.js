@@ -21,6 +21,7 @@ const el = {
   startBtn: byId("startBtn"), timeLabel: byId("timeLabel"), scoreLabel: byId("scoreLabel"), comboLabel: byId("comboLabel"), missLabel: byId("missLabel"),
   comboBanner: byId("comboBanner"), arena: byId("arena"), missionList: byId("missionList"), skinList: byId("skinList"), rankList: byId("rankList"),
   resultModal: byId("resultModal"), gradeText: byId("gradeText"), resultScore: byId("resultScore"), resultCoins: byId("resultCoins"), retryBtn: byId("retryBtn"),
+  gameSection: document.querySelector("section.game"),
   tabs: [...document.querySelectorAll(".tab")], panels: [...document.querySelectorAll(".panel")],
 };
 
@@ -30,6 +31,7 @@ function init() {
   bind();
   refreshStreak();
   renderAll();
+  if (el.gameSection) el.gameSection.style.display = "block";
 }
 
 function bind() {
@@ -44,6 +46,9 @@ function bind() {
       const key = tab.dataset.panel;
       el.tabs.forEach((t) => t.classList.toggle("active", t === tab));
       el.panels.forEach((p) => p.classList.toggle("active", p.id === `panel-${key}`));
+      if (el.gameSection) {
+        el.gameSection.style.display = key === "play" ? "block" : "none";
+      }
     };
   });
 }
