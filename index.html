@@ -2,58 +2,60 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Minigame MVP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Tap Dash Arena</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="app">
-      <header class="topbar card">
+      <header class="top card">
         <div>
-          <h1>🎮 Minigame</h1>
-          <p class="muted">Free globally · $1 premium cosmetics/features</p>
+          <h1>⚡ Tap Dash Arena</h1>
+          <p class="muted">Free to play · $0.99 Premium cosmetics/features</p>
         </div>
-        <div class="top-actions">
-          <input id="playerName" maxlength="20" placeholder="Your name" />
-          <button id="saveNameBtn">Save Name</button>
-          <button id="premiumBtn">Demo Unlock ($1)</button>
-        </div>
+        <button id="premiumBtn" class="cta">Unlock Premium ($0.99)</button>
       </header>
 
-      <section class="layout">
-        <aside class="sidebar card">
-          <h3>Games</h3>
-          <button class="nav-btn" data-game="tapDash">Tap Dash</button>
-          <button class="nav-btn" data-game="memoryFlip">Memory Flip</button>
-          <button class="nav-btn" data-game="colorRush">Color Rush</button>
+      <section class="card stats">
+        <div><span class="label">Player</span><strong id="playerLabel">Guest</strong></div>
+        <div><span class="label">Coins</span><strong id="coinLabel">0</strong></div>
+        <div><span class="label">Best</span><strong id="bestLabel">0</strong></div>
+        <div><span class="label">Streak</span><strong id="streakLabel">0🔥</strong></div>
+      </section>
 
-          <h3>Theme / Skin</h3>
-          <select id="themeSelect">
-            <option value="classic">Classic (Free)</option>
-            <option value="neon">Neon (Premium)</option>
-            <option value="pastel">Pastel (Premium)</option>
-          </select>
+      <section class="card identity">
+        <input id="playerInput" maxlength="20" placeholder="Your name" />
+        <button id="savePlayerBtn">Save</button>
+      </section>
 
-          <div class="meta">
-            <p><strong>Premium:</strong> <span id="premiumState">No</span></p>
-            <p><strong>Player:</strong> <span id="playerState">Guest</span></p>
-          </div>
-        </aside>
+      <section class="card game">
+        <div class="game-head">
+          <h2>Today Mode: 45s Survival</h2>
+          <button id="startBtn">Start Run</button>
+        </div>
+        <div class="hud">
+          <span>Time: <b id="timeLabel">45</b></span>
+          <span>Score: <b id="scoreLabel">0</b></span>
+          <span>Combo: <b id="comboLabel">x1</b></span>
+          <span>Miss: <b id="missLabel">0</b>/5</span>
+        </div>
+        <div id="arena" class="arena"></div>
+        <p class="muted">Hit targets quickly to stack combo multiplier. Miss too much and combo breaks.</p>
+      </section>
 
-        <main class="main card">
-          <div id="gameArea"></div>
-        </main>
+      <section class="card missions">
+        <h3>Daily Missions</h3>
+        <ul id="missionList"></ul>
+      </section>
 
-        <aside class="rank card">
-          <h3>Leaderboard</h3>
-          <label for="leaderboardGame">Game</label>
-          <select id="leaderboardGame">
-            <option value="tapDash">Tap Dash</option>
-            <option value="memoryFlip">Memory Flip</option>
-            <option value="colorRush">Color Rush</option>
-          </select>
-          <ol id="leaderboardList"></ol>
-        </aside>
+      <section class="card shop">
+        <h3>Skin Shop</h3>
+        <div id="skinList" class="skin-list"></div>
+      </section>
+
+      <section class="card leaderboard">
+        <h3>Top Local Ranking (Season)</h3>
+        <ol id="rankList"></ol>
       </section>
     </div>
 

@@ -1,332 +1,313 @@
-const STORE_KEY = "minigame_mvp_v1";
-const PAYMENT_CONFIG = {
-  checkoutEndpoint: "https://api.example.com/payments/checkout-session",
-  verifyEndpoint: "https://api.example.com/payments/verify",
+const STORE_KEY = "tap_dash_arena_v2";
+const state = load();
+
+const SKINS = [
+  { id: "classic", name: "Classic", coin: 0, premium: false },
+  { id: "neon", name: "Neon Pulse", coin: 300, premium: true },
+  { id: "gold", name: "Gold Rush", coin: 500, premium: true },
+  { id: "blossom", name: "Blossom", coin: 250, premium: false },
+];
+
+const MISSIONS = [
+  { id: "play3", label: "Play 3 runs", goal: 3, reward: 80 },
+  { id: "score120", label: "Reach score 120 in one run", goal: 1, reward: 120 },
+  { id: "combo8", label: "Reach combo x8", goal: 1, reward: 100 },
+];
+
+const el = {
+  premiumBtn: byId("premiumBtn"),
+  playerLabel: byId("playerLabel"),
+  coinLabel: byId("coinLabel"),
+  bestLabel: byId("bestLabel"),
+  streakLabel: byId("streakLabel"),
+  playerInput: byId("playerInput"),
+  savePlayerBtn: byId("savePlayerBtn"),
+  startBtn: byId("startBtn"),
+  timeLabel: byId("timeLabel"),
+  scoreLabel: byId("scoreLabel"),
+  comboLabel: byId("comboLabel"),
+  missLabel: byId("missLabel"),
+  arena: byId("arena"),
+  missionList: byId("missionList"),
+  skinList: byId("skinList"),
+  rankList: byId("rankList"),
 };
-
-const state = loadState();
-let currentGame = "tapDash";
-
-const gameArea = document.getElementById("gameArea");
-const premiumState = document.getElementById("premiumState");
-const playerState = document.getElementById("playerState");
-const playerNameInput = document.getElementById("playerName");
-const leaderboardList = document.getElementById("leaderboardList");
-const leaderboardGame = document.getElementById("leaderboardGame");
-const themeSelect = document.getElementById("themeSelect");
 
 init();
 
 function init() {
-  bindUI();
-  applyTheme(state.theme);
-  renderStatus();
-  renderGame();
-  renderLeaderboard();
+  bind();
+  refreshStreak();
+  renderAll();
 }
 
-function bindUI() {
-  document.querySelectorAll(".nav-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      currentGame = btn.dataset.game;
-      renderGame();
-    });
-  });
+function bind() {
+  el.savePlayerBtn.onclick = () => {
+    state.playerName = el.playerInput.value.trim() || "Guest";
+    save();
+    renderTop();
+  };
 
-  document.getElementById("saveNameBtn").addEventListener("click", () => {
-    const v = playerNameInput.value.trim();
-    state.playerName = v || "Guest";
-    persist();
-    renderStatus();
-  });
-
-  document.getElementById("premiumBtn").addEventListener("click", async () => {
-    // 결제 훅 포인트 (실서비스에서는 서버 연동)
-    // await startCheckout();
+  el.premiumBtn.onclick = async () => {
+    // TODO: 결제 연동 훅 (Stripe Checkout)
+    // const url = await createCheckoutSession(); location.href = url;
     state.premium = true; // demo unlock
-    persist();
-    renderStatus();
+    save();
+    renderTop();
     alert("Premium unlocked (demo)");
-  });
+  };
 
-  themeSelect.value = state.theme;
-  themeSelect.addEventListener("change", () => {
-    const selected = themeSelect.value;
-    if (["neon", "pastel"].includes(selected) && !state.premium) {
-      alert("Premium theme. Unlock for $1.");
-      themeSelect.value = state.theme;
-      return;
+  el.startBtn.onclick = startRun;
+}
+
+function renderAll() {
+  renderTop();
+  renderMissions();
+  renderShop();
+  renderRank();
+  applySkin();
+}
+
+function renderTop() {
+  el.playerLabel.textContent = state.playerName;
+  el.coinLabel.textContent = String(state.coins);
+  el.bestLabel.textContent = String(state.bestScore);
+  el.streakLabel.textContent = `${state.streak}🔥`;
+  el.playerInput.value = state.playerName === "Guest" ? "" : state.playerName;
+  el.premiumBtn.textContent = state.premium ? "Premium Active ✅" : "Unlock Premium ($0.99)";
+}
+
+function startRun() {
+  let time = 45;
+  let score = 0;
+  let combo = 1;
+  let miss = 0;
+  let targetSize = 58;
+  let activeTarget = null;
+
+  el.arena.innerHTML = "";
+  syncHud();
+
+  spawnTarget();
+  const timer = setInterval(() => {
+    time--;
+    if (time % 8 === 0 && targetSize > 34) targetSize -= 4;
+    syncHud();
+    if (time <= 0 || miss >= 5) {
+      clearInterval(timer);
+      if (activeTarget) activeTarget.remove();
+      finishRun(score, combo);
     }
-    state.theme = selected;
-    persist();
-    applyTheme(state.theme);
-  });
+  }, 1000);
 
-  leaderboardGame.addEventListener("change", renderLeaderboard);
-}
+  function spawnTarget() {
+    if (activeTarget) activeTarget.remove();
+    const t = document.createElement("button");
+    t.className = "target";
+    t.style.width = `${targetSize}px`;
+    t.style.height = `${targetSize}px`;
 
-async function startCheckout() {
-  const res = await fetch(PAYMENT_CONFIG.checkoutEndpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      sku: "premium_pack_1usd",
-      playerId: state.playerName,
-      successUrl: window.location.href,
-      cancelUrl: window.location.href,
-    }),
-  });
-  const data = await res.json();
-  if (data?.checkoutUrl) window.location.href = data.checkoutUrl;
-}
+    const maxX = Math.max(1, el.arena.clientWidth - targetSize);
+    const maxY = Math.max(1, el.arena.clientHeight - targetSize);
+    t.style.left = `${Math.random() * maxX}px`;
+    t.style.top = `${Math.random() * maxY}px`;
 
-function renderStatus() {
-  premiumState.textContent = state.premium ? "Yes" : "No";
-  playerState.textContent = state.playerName;
-  playerNameInput.value = state.playerName === "Guest" ? "" : state.playerName;
-}
-
-function renderGame() {
-  if (currentGame === "tapDash") renderTapDash();
-  if (currentGame === "memoryFlip") renderMemoryFlip();
-  if (currentGame === "colorRush") renderColorRush();
-}
-
-function renderTapDash() {
-  gameArea.innerHTML = `
-    <h2>Tap Dash</h2>
-    <p class="muted">Click moving targets for 20 seconds.</p>
-    <button id="tapStart">Start</button>
-    <p>Time: <span id="tapTime">20</span> | Score: <span id="tapScore">0</span></p>
-    <div class="tap-field" id="tapField"></div>
-  `;
-  const tapStart = document.getElementById("tapStart");
-  const tapTime = document.getElementById("tapTime");
-  const tapScore = document.getElementById("tapScore");
-  const tapField = document.getElementById("tapField");
-
-  tapStart.onclick = () => {
-    let time = 20;
-    let score = 0;
-    tapScore.textContent = "0";
-    tapTime.textContent = "20";
-
-    const spawn = () => {
-      tapField.innerHTML = "";
-      const t = document.createElement("button");
-      t.className = "target";
-      const x = Math.random() * (tapField.clientWidth - 42);
-      const y = Math.random() * (tapField.clientHeight - 42);
-      t.style.left = `${x}px`;
-      t.style.top = `${y}px`;
-      t.onclick = () => {
-        score += 1;
-        tapScore.textContent = String(score);
-        spawn();
-      };
-      tapField.appendChild(t);
+    let clicked = false;
+    const vanishMs = Math.max(420, 1100 - combo * 40);
+    t.onclick = () => {
+      clicked = true;
+      combo += 1;
+      score += Math.floor(4 * combo);
+      if (combo >= 8) progressMission("combo8", 1);
+      syncHud();
+      spawnTarget();
     };
 
-    spawn();
-    const timer = setInterval(() => {
-      time -= 1;
-      tapTime.textContent = String(time);
-      if (time <= 0) {
-        clearInterval(timer);
-        tapField.innerHTML = "";
-        submitScore("tapDash", score);
-        alert(`Finished! Score: ${score}`);
-      }
-    }, 1000);
-  };
+    activeTarget = t;
+    el.arena.appendChild(t);
+
+    setTimeout(() => {
+      if (clicked || time <= 0) return;
+      miss += 1;
+      combo = 1;
+      syncHud();
+      spawnTarget();
+    }, vanishMs);
+  }
+
+  function syncHud() {
+    el.timeLabel.textContent = String(time);
+    el.scoreLabel.textContent = String(score);
+    el.comboLabel.textContent = `x${combo}`;
+    el.missLabel.textContent = String(miss);
+  }
 }
 
-function renderMemoryFlip() {
-  const symbols = ["🍎", "🍌", "🍇", "🍒", "🍋", "🥝", "🍑", "🍉"];
-  const deck = [...symbols, ...symbols].sort(() => Math.random() - 0.5);
+function finishRun(score) {
+  const coinReward = Math.floor(score / 8) + 10;
+  state.coins += coinReward;
+  state.bestScore = Math.max(state.bestScore, score);
+  state.runs += 1;
+  progressMission("play3", 1);
+  if (score >= 120) progressMission("score120", 1);
 
-  gameArea.innerHTML = `
-    <h2>Memory Flip</h2>
-    <p class="muted">Match all pairs as fast as possible.</p>
-    <button id="memStart">Start</button>
-    <p>Time: <span id="memTime">0</span>s | Matches: <span id="memMatches">0</span>/8</p>
-    <div class="memory-grid" id="memGrid"></div>
-  `;
+  state.ranking.push({ name: state.playerName, score, at: Date.now() });
+  state.ranking = state.ranking.sort((a, b) => b.score - a.score).slice(0, 20);
 
-  const memStart = document.getElementById("memStart");
-  const memGrid = document.getElementById("memGrid");
-  const memTime = document.getElementById("memTime");
-  const memMatches = document.getElementById("memMatches");
-
-  memStart.onclick = () => {
-    let open = [];
-    let locked = false;
-    let matches = 0;
-    let sec = 0;
-    memMatches.textContent = "0";
-    memGrid.innerHTML = "";
-
-    const timer = setInterval(() => {
-      sec += 1;
-      memTime.textContent = String(sec);
-    }, 1000);
-
-    deck.forEach((sym, i) => {
-      const card = document.createElement("div");
-      card.className = "memory-card";
-      card.dataset.index = String(i);
-      card.dataset.symbol = sym;
-      card.textContent = "?";
-      card.onclick = () => {
-        if (locked || card.classList.contains("open") || open.includes(card)) return;
-        card.classList.add("open");
-        card.textContent = sym;
-        open.push(card);
-
-        if (open.length === 2) {
-          const [a, b] = open;
-          if (a.dataset.symbol === b.dataset.symbol) {
-            matches += 1;
-            memMatches.textContent = String(matches);
-            open = [];
-            if (matches === 8) {
-              clearInterval(timer);
-              const score = Math.max(1, 200 - sec * 5);
-              submitScore("memoryFlip", score);
-              alert(`Clear! Time ${sec}s · Score ${score}`);
-            }
-          } else {
-            locked = true;
-            setTimeout(() => {
-              a.classList.remove("open");
-              b.classList.remove("open");
-              a.textContent = "?";
-              b.textContent = "?";
-              open = [];
-              locked = false;
-            }, 700);
-          }
-        }
-      };
-      memGrid.appendChild(card);
-    });
-  };
+  save();
+  renderAll();
+  alert(`Run finished! Score ${score} · +${coinReward} coins`);
 }
 
-function renderColorRush() {
-  const colors = ["red", "blue", "green", "purple", "orange"];
-  gameArea.innerHTML = `
-    <h2>Color Rush</h2>
-    <p class="muted">Click the FONT color, not the text word. 30 seconds.</p>
-    <button id="colorStart">Start</button>
-    <p>Time: <span id="colorTime">30</span> | Score: <span id="colorScore">0</span></p>
-    <h3 id="colorPrompt">Ready?</h3>
-    <div class="color-options" id="colorOptions"></div>
-  `;
+function renderMissions() {
+  ensureMissionDay();
+  el.missionList.innerHTML = MISSIONS.map((m) => {
+    const p = state.missions[m.id] || { value: 0, claimed: false };
+    const done = p.value >= m.goal;
+    return `<li class="mission-item ${done ? "done" : ""}">
+      <div><strong>${m.label}</strong></div>
+      <div>${Math.min(p.value, m.goal)}/${m.goal} · reward ${m.reward} coins</div>
+      <button data-claim="${m.id}" ${!done || p.claimed ? "disabled" : ""}>
+        ${p.claimed ? "Claimed" : "Claim"}
+      </button>
+    </li>`;
+  }).join("");
 
-  const colorStart = document.getElementById("colorStart");
-  const colorTime = document.getElementById("colorTime");
-  const colorScore = document.getElementById("colorScore");
-  const colorPrompt = document.getElementById("colorPrompt");
-  const colorOptions = document.getElementById("colorOptions");
-
-  colorOptions.innerHTML = colors
-    .map((c) => `<button class="color-btn" data-color="${c}">${c}</button>`)
-    .join("");
-
-  colorStart.onclick = () => {
-    let time = 30;
-    let score = 0;
-    let answer = "";
-
-    const next = () => {
-      const word = colors[Math.floor(Math.random() * colors.length)];
-      answer = colors[Math.floor(Math.random() * colors.length)];
-      colorPrompt.textContent = word.toUpperCase();
-      colorPrompt.style.color = answer;
+  el.missionList.querySelectorAll("button[data-claim]").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.dataset.claim;
+      const mission = MISSIONS.find((m) => m.id === id);
+      const prog = state.missions[id];
+      if (!mission || !prog || prog.claimed || prog.value < mission.goal) return;
+      prog.claimed = true;
+      state.coins += mission.reward;
+      save();
+      renderAll();
     };
-
-    next();
-    const timer = setInterval(() => {
-      time -= 1;
-      colorTime.textContent = String(time);
-      if (time <= 0) {
-        clearInterval(timer);
-        submitScore("colorRush", score);
-        alert(`Finished! Score: ${score}`);
-      }
-    }, 1000);
-
-    colorOptions.querySelectorAll("button").forEach((btn) => {
-      btn.onclick = () => {
-        if (btn.dataset.color === answer) score += 2;
-        else score = Math.max(0, score - 1);
-        colorScore.textContent = String(score);
-        next();
-      };
-    });
-  };
+  });
 }
 
-function submitScore(game, score) {
-  const entry = {
-    name: state.playerName || "Guest",
-    score,
-    at: Date.now(),
-  };
-  state.scores[game] = state.scores[game] || [];
-  state.scores[game].push(entry);
-  state.scores[game] = state.scores[game]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
-  persist();
-  renderLeaderboard();
+function progressMission(id, delta) {
+  ensureMissionDay();
+  state.missions[id] = state.missions[id] || { value: 0, claimed: false };
+  state.missions[id].value += delta;
 }
 
-function renderLeaderboard() {
-  const game = leaderboardGame.value;
-  const list = state.scores[game] || [];
-  leaderboardList.innerHTML = list.length
-    ? list
-        .map((r) => `<li>${escapeHtml(r.name)} — <strong>${r.score}</strong></li>`)
+function ensureMissionDay() {
+  const today = dayKey();
+  if (state.missionDay !== today) {
+    state.missionDay = today;
+    state.missions = {};
+    MISSIONS.forEach((m) => (state.missions[m.id] = { value: 0, claimed: false }));
+  }
+}
+
+function renderShop() {
+  el.skinList.innerHTML = SKINS.map((s) => {
+    const owned = state.ownedSkins.includes(s.id);
+    const equipped = state.skin === s.id;
+    const lockedPremium = s.premium && !state.premium;
+
+    let btn = "";
+    if (equipped) btn = `<button disabled>Equipped</button>`;
+    else if (owned) btn = `<button data-equip="${s.id}">Equip</button>`;
+    else if (lockedPremium) btn = `<button disabled>Premium only</button>`;
+    else btn = `<button data-buy="${s.id}">Buy ${s.coin} coins</button>`;
+
+    return `<div class="skin-item">
+      <strong>${s.name}</strong>
+      <div class="muted">${s.premium ? "Premium" : "Free line"}</div>
+      ${btn}
+    </div>`;
+  }).join("");
+
+  el.skinList.querySelectorAll("button[data-buy]").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.dataset.buy;
+      const skin = SKINS.find((s) => s.id === id);
+      if (!skin) return;
+      if (state.coins < skin.coin) return alert("Not enough coins");
+      state.coins -= skin.coin;
+      state.ownedSkins.push(id);
+      state.skin = id;
+      save();
+      renderAll();
+    };
+  });
+
+  el.skinList.querySelectorAll("button[data-equip]").forEach((btn) => {
+    btn.onclick = () => {
+      state.skin = btn.dataset.equip;
+      save();
+      renderAll();
+    };
+  });
+}
+
+function applySkin() {
+  document.body.dataset.skin = state.skin;
+}
+
+function renderRank() {
+  el.rankList.innerHTML = state.ranking.length
+    ? state.ranking
+        .slice(0, 10)
+        .map((r) => `<li>${esc(r.name)} — <b>${r.score}</b></li>`)
         .join("")
     : "<li>No score yet</li>";
 }
 
-function applyTheme(theme) {
-  document.body.dataset.theme = theme;
+function refreshStreak() {
+  const today = dayKey();
+  if (state.lastOpenDay === today) return;
+
+  const yesterday = dayKey(Date.now() - 86400000);
+  if (state.lastOpenDay === yesterday) state.streak += 1;
+  else state.streak = 1;
+
+  state.lastOpenDay = today;
+  state.coins += 15;
+  save();
 }
 
-function loadState() {
+function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (!raw)
-      return {
-        playerName: "Guest",
-        premium: false,
-        theme: "classic",
-        scores: { tapDash: [], memoryFlip: [], colorRush: [] },
-      };
-    return JSON.parse(raw);
-  } catch {
-    return {
-      playerName: "Guest",
-      premium: false,
-      theme: "classic",
-      scores: { tapDash: [], memoryFlip: [], colorRush: [] },
-    };
-  }
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {
+    playerName: "Guest",
+    premium: false,
+    coins: 120,
+    bestScore: 0,
+    runs: 0,
+    streak: 0,
+    lastOpenDay: null,
+    missionDay: null,
+    missions: {},
+    ranking: [],
+    ownedSkins: ["classic"],
+    skin: "classic",
+  };
 }
 
-function persist() {
+function save() {
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
 }
 
-function escapeHtml(s) {
-  return String(s)
+function byId(id) {
+  return document.getElementById(id);
+}
+
+function dayKey(ts = Date.now()) {
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
+function esc(v) {
+  return String(v)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll("'", "&#39;");
 }
