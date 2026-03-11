@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minigame MVP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar card">
+        <div>
+          <h1>🎮 Minigame</h1>
+          <p class="muted">Free globally · $1 premium cosmetics/features</p>
+        </div>
+        <div class="top-actions">
+          <input id="playerName" maxlength="20" placeholder="Your name" />
+          <button id="saveNameBtn">Save Name</button>
+          <button id="premiumBtn">Demo Unlock ($1)</button>
+        </div>
+      </header>
+
+      <section class="layout">
+        <aside class="sidebar card">
+          <h3>Games</h3>
+          <button class="nav-btn" data-game="tapDash">Tap Dash</button>
+          <button class="nav-btn" data-game="memoryFlip">Memory Flip</button>
+          <button class="nav-btn" data-game="colorRush">Color Rush</button>
+
+          <h3>Theme / Skin</h3>
+          <select id="themeSelect">
+            <option value="classic">Classic (Free)</option>
+            <option value="neon">Neon (Premium)</option>
+            <option value="pastel">Pastel (Premium)</option>
+          </select>
+
+          <div class="meta">
+            <p><strong>Premium:</strong> <span id="premiumState">No</span></p>
+            <p><strong>Player:</strong> <span id="playerState">Guest</span></p>
+          </div>
+        </aside>
+
+        <main class="main card">
+          <div id="gameArea"></div>
+        </main>
+
+        <aside class="rank card">
+          <h3>Leaderboard</h3>
+          <label for="leaderboardGame">Game</label>
+          <select id="leaderboardGame">
+            <option value="tapDash">Tap Dash</option>
+            <option value="memoryFlip">Memory Flip</option>
+            <option value="colorRush">Color Rush</option>
+          </select>
+          <ol id="leaderboardList"></ol>
+        </aside>
+      </section>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
